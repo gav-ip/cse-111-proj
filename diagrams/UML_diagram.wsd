@@ -1,0 +1,35 @@
+@startuml
+left to right direction
+
+actor "End User" as User
+actor "Administrator" as Admin
+actor "Data Analyst" as Analyst
+actor "System" as System
+
+rectangle "Pokemon Database System" {
+  User --> (Search Pokemon)
+  User --> (View Pokemon Stats)
+  User --> (View Evolution Chain)
+  User --> (View Pokemon Moves)
+  User --> (Filter Pokemon by Type)
+  
+  Admin --> (Load Data from PokeAPI)
+  Admin --> (Update Database)
+  Admin --> (Manage Database Schema)
+  Admin --> (Backup Database)
+  
+  Analyst --> (Generate Reports)
+  Analyst --> (Analyze Statistics)
+  Analyst --> (Export Data)
+  Analyst --> (Query Pokedex Numbers)
+  
+  System --> (Optimize Database Settings)
+  
+  (Load Data from PokeAPI) ..> (Optimize Database Settings) : <<include>>
+  (View Pokemon Stats) ..> (Search Pokemon) : <<include>>
+  (View Evolution Chain) ..> (Search Pokemon) : <<include>>
+  (View Pokemon Moves) ..> (Search Pokemon) : <<include>>
+  (Filter Pokemon by Type) ..> (Search Pokemon) : <<include>>
+}
+
+@enduml
