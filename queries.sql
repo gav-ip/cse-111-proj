@@ -1,6 +1,5 @@
 -- SQL Queries and Data Modification Statements
 -- Based on Pokemon Database System UML Diagram
--- Total: 10 diverse statements demonstrating different SQL operations
 
 -- ============================================================================
 -- QUERY 1: Search Pokemon by Name (Use Case: Search Pokemon)
@@ -217,9 +216,3 @@ DELETE FROM pokemon_type WHERE pokemon_id = 10001;
 DELETE FROM height WHERE height_id = 10001;
 DELETE FROM weight WHERE weight_id = 10001;
 DELETE FROM pokemon WHERE pokemon_id = 10001;
-
-
--- ============================================================================
--- End of SQL Queries and Modification Statements
--- ============================================================================
-
