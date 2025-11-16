@@ -8,7 +8,8 @@ CREATE TABLE pokemon (
 );
 
 CREATE TABLE types (
-    type_id INTEGER PRIMARY KEY
+    type_id INTEGER PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
 );
 
 CREATE TABLE stats (
@@ -29,11 +30,13 @@ CREATE TABLE dex (
 -- 1:1 entities (modeled with shared PK referencing pokemon)
 CREATE TABLE height (
     height_id INTEGER PRIMARY KEY,
+    value INTEGER NOT NULL,
     CONSTRAINT height_pokemon_fk FOREIGN KEY (height_id) REFERENCES pokemon(pokemon_id)
 );
 
 CREATE TABLE weight (
     weight_id INTEGER PRIMARY KEY,
+    value INTEGER NOT NULL,
     CONSTRAINT weight_pokemon_fk FOREIGN KEY (weight_id) REFERENCES pokemon(pokemon_id)
 );
 
@@ -49,6 +52,7 @@ CREATE TABLE pokemon_type (
 CREATE TABLE pokemon_stat (
     pokemon_id INTEGER NOT NULL,
     stat_id INTEGER NOT NULL,
+    value INTEGER NOT NULL,
     PRIMARY KEY (pokemon_id, stat_id),
     CONSTRAINT pokemon_stat_pokemon_fk FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
     CONSTRAINT pokemon_stat_stat_fk FOREIGN KEY (stat_id) REFERENCES stats(stat_id)
