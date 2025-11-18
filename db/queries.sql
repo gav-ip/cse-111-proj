@@ -416,3 +416,231 @@ DELETE FROM pokemon_type WHERE pokemon_id = 10001;
 DELETE FROM height WHERE height_id = 10001;
 DELETE FROM weight WHERE weight_id = 10001;
 DELETE FROM pokemon WHERE pokemon_id = 10001;
+
+-- ============================================================================
+-- QUERY 19: Pokemon with Most Diverse Movepool by Type
+-- Shows Pokemon that can learn moves of different types (versatility analysis)
+-- ============================================================================
+SELECT 
+    p.name AS pokemon_name,
+    GROUP_CONCAT(DISTINCT t.name) AS pokemon_types,
+    COUNT(DISTINCT m.move_id) AS total_moves,
+    COUNT(DISTINCT mt.type_id) AS move_type_diversity
+FROM pokemon p
+JOIN pokemon_move pm ON p.pokemon_id = pm.pokemon_id
+JOIN moves m ON pm.move_id = m.move_id
+JOIN move_type mt ON m.move_id = mt.move_id
+JOIN pokemon_type pt ON p.pokemon_id = pt.pokemon_id
+JOIN types t ON pt.type_id = t.type_id
+GROUP BY p.pokemon_id, p.name
+HAVING move_type_diversity >= 5
+ORDER BY move_type_diversity DESC, total_moves DESC
+LIMIT 15;
+
+-- ============================================================================
+-- QUERY 20: Pokemon Stat Distribution Analysis (Use Case: Analyze Statistics)
+-- Categorizes Pokemon based on their stat totals into tiers
+-- ============================================================================
+SELECT 
+    CASE 
+        WHEN total_stats >= 600 THEN 'Legendary Tier'
+        WHEN total_stats >= 530 THEN 'Pseudo-Legendary Tier'
+        WHEN total_stats >= 480 THEN 'High Tier'
+        WHEN total_stats >= 400 THEN 'Mid Tier'
+        ELSE 'Low Tier'
+    END AS stat_tier,
+    COUNT(*) AS pokemon_count,
+    ROUND(AVG(total_stats), 2) AS avg_total,
+    MIN(total_stats) AS min_total,
+    MAX(total_stats) AS max_total
+FROM (
+    SELECT 
+        p.pokemon_id,
+        p.name,
+        SUM(ps.value) AS total_stats
+    FROM pokemon p
+    JOIN pokemon_stat ps ON p.pokemon_id = ps.pokemon_id
+    GROUP BY p.pokemon_id, p.name
+) AS pokemon_totals
+GROUP BY stat_tier
+ORDER BY min_total DESC;
+
+-- ============================================================================
+-- QUERY 21: Type Effectiveness Coverage
+-- Analyzes which Pokemon types are most represented across all Pokemon
+-- ============================================================================
+SELECT 
+    t.name AS type_name,
+    COUNT(DISTINCT p.pokemon_id) AS pokemon_with_type,
+    ROUND(COUNT(DISTINCT p.pokemon_id) * 100.0 / (SELECT COUNT(*) FROM pokemon), 2) AS percentage_of_total,
+    ROUND(AVG(h.value), 2) AS avg_height,
+    ROUND(AVG(w.value), 2) AS avg_weight
+FROM types t
+JOIN pokemon_type pt ON t.type_id = pt.type_id
+JOIN pokemon p ON pt.pokemon_id = p.pokemon_id
+LEFT JOIN height h ON p.pokemon_id = h.height_id
+LEFT JOIN weight w ON p.pokemon_id = w.weight_id
+GROUP BY t.type_id, t.name
+ORDER BY pokemon_with_type DESC;
+
+-- ============================================================================
+-- QUERY 22: Pokemon with Balanced Stats
+-- Finds Pokemon where all stats are within 20 points of each other (well-rounded)
+-- ============================================================================
+SELECT 
+    p.pokemon_id,
+    p.name AS pokemon_name,
+    MIN(ps.value) AS lowest_stat,
+    MAX(ps.value) AS highest_stat,
+    MAX(ps.value) - MIN(ps.value) AS stat_range,
+    ROUND(AVG(ps.value), 2) AS avg_stat
+FROM pokemon p
+JOIN pokemon_stat ps ON p.pokemon_id = ps.pokemon_id
+GROUP BY p.pokemon_id, p.name
+HAVING stat_range <= 20
+ORDER BY avg_stat DESC
+LIMIT 20;
+
+-- ============================================================================
+-- QUERY 23: Evolution Chains with Stat Growth Analysis
+-- Compares stats between evolution stages to show growth patterns
+-- ============================================================================
+SELECT 
+    p1.name AS base_pokemon,
+    p2.name AS evolved_pokemon,
+    s.name AS stat_name,
+    ps1.value AS base_stat_value,
+    ps2.value AS evolved_stat_value,
+    ps2.value - ps1.value AS stat_increase,
+    ROUND((ps2.value - ps1.value) * 100.0 / ps1.value, 2) AS percent_increase
+FROM evolutions e
+JOIN pokemon p1 ON e.from_pokemon_id = p1.pokemon_id
+JOIN pokemon p2 ON e.to_pokemon_id = p2.pokemon_id
+JOIN pokemon_stat ps1 ON p1.pokemon_id = ps1.pokemon_id
+JOIN pokemon_stat ps2 ON p2.pokemon_id = ps2.pokemon_id AND ps1.stat_id = ps2.stat_id
+JOIN stats s ON ps1.stat_id = s.stat_id
+WHERE ps2.value > ps1.value
+ORDER BY percent_increase DESC
+LIMIT 30;
+
+-- ============================================================================
+-- QUERY 24: Rare Type Combinations
+-- Identifies unique or rare type combinations among Pokemon
+-- ============================================================================
+SELECT 
+    GROUP_CONCAT(t.name, '/') AS type_combination,
+    COUNT(DISTINCT p.pokemon_id) AS pokemon_count,
+    GROUP_CONCAT(DISTINCT p.name) AS pokemon_names
+FROM pokemon p
+JOIN pokemon_type pt ON p.pokemon_id = pt.pokemon_id
+JOIN types t ON pt.type_id = t.type_id
+GROUP BY p.pokemon_id
+HAVING pokemon_count <= 3
+ORDER BY pokemon_count ASC, type_combination;
+
+-- ============================================================================
+-- QUERY 25: Pokemon Size Categories by Type
+-- Analyzes physical size patterns across different Pokemon types
+-- ============================================================================
+SELECT 
+    t.name AS type_name,
+    COUNT(DISTINCT p.pokemon_id) AS pokemon_count,
+    ROUND(AVG(h.value), 2) AS avg_height,
+    ROUND(AVG(w.value), 2) AS avg_weight,
+    ROUND(AVG(w.value) / AVG(h.value), 2) AS weight_to_height_ratio,
+    MAX(w.value) AS heaviest,
+    MIN(h.value) AS shortest
+FROM types t
+JOIN pokemon_type pt ON t.type_id = pt.type_id
+JOIN pokemon p ON pt.pokemon_id = p.pokemon_id
+JOIN height h ON p.pokemon_id = h.height_id
+JOIN weight w ON p.pokemon_id = w.weight_id
+GROUP BY t.type_id, t.name
+HAVING pokemon_count >= 10
+ORDER BY weight_to_height_ratio DESC;
+
+-- ============================================================================
+-- QUERY 26: Move Learning Patterns by Evolution Stage
+-- Analyzes how move availability changes through evolution chains
+-- ============================================================================
+WITH evolution_stages AS (
+    SELECT 
+        p.pokemon_id,
+        p.name,
+        CASE 
+            WHEN p.pokemon_id NOT IN (SELECT to_pokemon_id FROM evolutions) 
+                AND p.pokemon_id IN (SELECT from_pokemon_id FROM evolutions) 
+            THEN 'Base'
+            WHEN p.pokemon_id IN (SELECT to_pokemon_id FROM evolutions) 
+                AND p.pokemon_id IN (SELECT from_pokemon_id FROM evolutions) 
+            THEN 'Mid'
+            WHEN p.pokemon_id IN (SELECT to_pokemon_id FROM evolutions) 
+            THEN 'Final'
+            ELSE 'Single'
+        END AS stage
+    FROM pokemon p
+)
+SELECT 
+    es.stage,
+    COUNT(DISTINCT es.pokemon_id) AS pokemon_in_stage,
+    ROUND(AVG(move_counts.move_count), 2) AS avg_moves_per_pokemon,
+    MAX(move_counts.move_count) AS max_moves
+FROM evolution_stages es
+LEFT JOIN (
+    SELECT pokemon_id, COUNT(move_id) AS move_count
+    FROM pokemon_move
+    GROUP BY pokemon_id
+) AS move_counts ON es.pokemon_id = move_counts.pokemon_id
+GROUP BY es.stage
+ORDER BY 
+    CASE es.stage 
+        WHEN 'Single' THEN 1
+        WHEN 'Base' THEN 2
+        WHEN 'Mid' THEN 3
+        WHEN 'Final' THEN 4
+    END;
+
+-- ============================================================================
+-- QUERY 27: Stat Specialists vs Generalists
+-- Identifies Pokemon with one dominant stat vs balanced distributions
+-- ============================================================================
+SELECT 
+    p.name AS pokemon_name,
+    GROUP_CONCAT(DISTINCT t.name) AS types,
+    MAX(ps.value) AS highest_stat,
+    ROUND(AVG(ps.value), 2) AS avg_stat,
+    MAX(ps.value) - AVG(ps.value) AS specialization_score,
+    CASE 
+        WHEN MAX(ps.value) - AVG(ps.value) > 50 THEN 'Specialist'
+        WHEN MAX(ps.value) - AVG(ps.value) < 20 THEN 'Generalist'
+        ELSE 'Balanced'
+    END AS pokemon_archetype
+FROM pokemon p
+JOIN pokemon_stat ps ON p.pokemon_id = ps.pokemon_id
+JOIN pokemon_type pt ON p.pokemon_id = pt.pokemon_id
+JOIN types t ON pt.type_id = t.type_id
+GROUP BY p.pokemon_id, p.name
+HAVING COUNT(ps.stat_id) >= 6
+ORDER BY specialization_score DESC
+LIMIT 25;
+
+-- ============================================================================
+-- QUERY 28: Cross-Pokedex Appearances with Regional Variants
+-- Shows Pokemon that appear in multiple regional Pokedexes
+-- ============================================================================
+SELECT 
+    p.name AS pokemon_name,
+    COUNT(DISTINCT pn.dex_id) AS pokedex_appearances,
+    GROUP_CONCAT(DISTINCT d.dex_name ORDER BY d.dex_name) AS appears_in,
+    ROUND(AVG(ps.value), 2) AS avg_stat,
+    GROUP_CONCAT(DISTINCT t.name) AS types
+FROM pokemon p
+JOIN pokemon_number pn ON p.pokemon_id = pn.pokemon_id
+JOIN dex d ON pn.dex_id = d.dex_id
+JOIN pokemon_stat ps ON p.pokemon_id = ps.pokemon_id
+JOIN pokemon_type pt ON p.pokemon_id = pt.pokemon_id
+JOIN types t ON pt.type_id = t.type_id
+GROUP BY p.pokemon_id, p.name
+HAVING pokedex_appearances >= 3
+ORDER BY pokedex_appearances DESC, avg_stat DESC;
+
